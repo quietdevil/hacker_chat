@@ -54,21 +54,16 @@ impl Connect {
                 if let Ok(end) = buf.read_line(&mut msg) {
                     // EOF
                     if end == 0 {
+                        let msg = pretty_message("Connect closed");
+                        self.send_channel
+                            .send(Event::Quit(Message { id, msg }))
+                            .unwrap();
+
                         break;
                     }
                 };
 
-                let time_now = Utc::now();
-                let message = format!(
-                    "[{}-{}-{} {}:{}:{}] {}",
-                    time_now.year(),
-                    time_now.month(),
-                    time_now.day(),
-                    time_now.hour(),
-                    time_now.minute(),
-                    time_now.second(),
-                    msg
-                );
+                let message = pretty_message(&msg);
 
                 match self.send_channel.send(Event::Message(Message {
                     id: id,
@@ -138,7 +133,7 @@ impl Server {
                 Ok(event) => match event {
                     Event::Join(msg) => self.send_all(msg),
                     Event::Message(msg) => self.send_all(msg),
-                    Event::Quit(msg) => println!("{:?}", msg),
+                    Event::Quit(msg) => self.send_all(msg),
                 },
                 Err(err) => println!("{}", err),
             }
@@ -163,4 +158,18 @@ impl Server {
             }
         });
     }
+}
+
+fn pretty_message(msg: &str) -> String {
+    let time_now = Utc::now();
+    format!(
+        "[{}-{}-{} {}:{}:{}] {}",
+        time_now.year(),
+        time_now.month(),
+        time_now.day(),
+        time_now.hour(),
+        time_now.minute(),
+        time_now.second(),
+        msg
+    )
 }
