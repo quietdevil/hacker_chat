@@ -73,10 +73,14 @@ impl Server {
                         let tx = self.tx.clone();
                         let client_tx = Self::spawn_client(id, stream, tx);
                         self.connections.push(Client { id, tx: client_tx });
+                        self.send_all(Message {
+                            id,
+                            msg: pretty_message(format!("Hacker №{} join in server\n", id)),
+                        });
                     }
                     ServerEvent::Disconnect { client_id } => self.send_all(Message {
                         id: client_id,
-                        msg: pretty_message("Hacker leave chat"),
+                        msg: pretty_message(format!("Hacket №{} leave from server\n", client_id)),
                     }),
                     ServerEvent::Message(msg) => self.send_all(msg),
                 },
@@ -100,13 +104,17 @@ impl Server {
                 let mut msg = String::new();
 
                 match buf.read_line(&mut msg) {
-                    Ok(0) => server_tx
-                        .send(ServerEvent::Disconnect { client_id: id })
-                        .unwrap(),
+                    Ok(0) => {
+                        server_tx
+                            .send(ServerEvent::Disconnect { client_id: id })
+                            .unwrap();
+                        break;
+                    }
+
                     Ok(_) => server_tx
                         .send(ServerEvent::Message(Message {
                             id,
-                            msg: pretty_message(&msg),
+                            msg: pretty_message(msg),
                         }))
                         .unwrap(),
                     Err(_) => server_tx
@@ -141,10 +149,10 @@ impl Server {
     }
 }
 
-fn pretty_message(msg: &str) -> String {
+fn pretty_message(msg: String) -> String {
     let time_now = Utc::now();
     format!(
-        "[{}-{}-{} {}:{}:{}] {}",
+        "[{}-{}-{} {:02}:{:02}:{:02}] {}",
         time_now.year(),
         time_now.month(),
         time_now.day(),
